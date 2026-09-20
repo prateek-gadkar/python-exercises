@@ -19,3 +19,5 @@ python exercise_04.py
 ```
 
 Each program asks for input in the terminal and prints the results.
+
+(this is a test line for LinkedIn Automation)
