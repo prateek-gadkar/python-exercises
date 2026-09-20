@@ -1,0 +1,115 @@
+name: Generate LinkedIn Post
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  linkedin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install
+        run: pip install requests Pillow PyYAML
+
+      - name: Generate LinkedIn Post
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - << 'PY'
+          import requests, os, json
+          from pathlib import Path
+          from datetime import datetime
+
+          # Get repo info
+          repo_full = os.getenv('GITHUB_REPOSITORY', 'prateek-gadkar/python-exercises')
+          owner, repo_name = repo_full.split('/')
+          sha = os.getenv('GITHUB_SHA', '')[:7]
+
+          # Get changed files
+          # Get last commit message
+          import subprocess
+          try:
+              msg = subprocess.check_output(['git', 'log', '-1', '--pretty=%B'], text=True).strip()[:200]
+          except:
+              msg = "New updates"
+
+          # Get file changes from git
+          try:
+              files = subprocess.check_output(['git', 'diff', '--name-status', 'HEAD~1', 'HEAD'], text=True).strip().split('\n')
+              file_list = []
+              for f in files[:5]:
+                  if f:
+                      parts = f.split('\t')
+                      status = parts[0]
+                      fname = parts[-1]
+                      file_list.append(f"{'✨ added' if 'A' in status else '♻️ modified'}: {fname}")
+          except:
+              file_list = ["exercise files updated"]
+
+          # Build LinkedIn post - OPTIMIZED FOR YOUR JOURNEY
+          post = f"""Day 2 on GitHub. I just shipped my first 4 Python programs.
+
+          No one talks about how confusing Git feels at first.
+          "Why is there a copy of my file? Did I break something?"
+
+          That was me yesterday.
+
+          → {repo_name}: My Day 1-4 Python journey
+
+          Latest push ({sha}):
+          {msg}
+
+          {chr(10).join(file_list)}
+
+          3 things I learned that tutorials don't tell you:
+          1. GitHub Desktop makes Git less scary
+          2. Writing README first forces you to think clearly
+          3. Deleting code is part of learning
+
+          The breakthrough wasn't code. It was pushing despite feeling like a beginner.
+
+          If you're also learning Python, what's the one concept that finally clicked for you? Be specific 👇
+
+          #Python #BuildInPublic #LearningInPublic
+          """
+
+          first_comment = f"""🔗 Repo: https://github.com/{repo_full}
+
+          {msg}
+
+          Try it: python exercise_01.py
+
+          Save this - I'm posting Day 5-10 next week.
+
+          #Python #BuildInPublic
+          """
+
+          # Save
+          Path('linkedin_post.txt').write_text(post + "\n\n--- FIRST COMMENT ---\n" + first_comment)
+          print(post)
+          print("\n--- FIRST COMMENT ---\n")
+          print(first_comment)
+
+          # Also create output dir for artifact
+          Path('output').mkdir(exist_ok=True)
+          Path('output/linkedin_post.txt').write_text(post + "\n\n--- FIRST COMMENT ---\n" + first_comment)
+          PY
+
+      - name: Upload LinkedIn Post
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-post-ready
+          path: output/linkedin_post.txt
+
+      - name: Show in logs
+        run: cat linkedin_post.txt
